@@ -6,3 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 tokio.workspace = true
+
+valence_text = { git = "https://github.com/valence-rs/valence.git", package = "valence_text" }
+
+protocol = { path = "../protocol" }

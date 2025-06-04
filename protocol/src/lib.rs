@@ -21,6 +21,7 @@ use derive_more::{From, Into};
 pub mod bounded;
 pub mod clientbound;
 pub mod impls;
+pub mod packet_io;
 pub mod serverbound;
 pub mod varint;
 
