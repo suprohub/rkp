@@ -194,3 +194,15 @@ impl Decode<'_> for f64 {
         Ok(f)
     }
 }
+
+impl Encode for () {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+impl Decode<'_> for () {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(())
+    }
+}
