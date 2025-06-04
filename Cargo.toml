@@ -1,0 +1,26 @@
+[workspace]
+resolver = "3"
+members = [
+    "protocol",
+    "protocol_macros",
+    "client",
+    "server"
+]
+
+[workspace.package]
+name = "rkp"
+version = "0.1.0"
+authors = ["suprohub <suprohub@gmail.com>"]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
+
+
+[workspace.dependencies]
+anyhow = "1.0"
+tokio = { version = "1.45", features = ["full"] }
+#rand = "0.9"
