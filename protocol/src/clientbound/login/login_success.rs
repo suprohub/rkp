@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use uuid::Uuid;
-use crate::{Bounded, Decode, Encode, Packet, PacketState, VarInt};
+use crate::{Bounded, Encode, Packet, PacketState, VarInt};
 
 #[derive(Clone, Debug, Packet)]
 #[packet(state = PacketState::Login)]

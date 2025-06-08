@@ -196,7 +196,7 @@ impl Decode<'_> for f64 {
 }
 
 impl Encode for () {
-    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         Ok(())
     }
 }

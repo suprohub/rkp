@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::Write;
-
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
