@@ -9,6 +9,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let input_name = input.ident;
+    let name_string = input_name.to_string();
 
     if input.generics.lifetimes().count() > 1 {
         return Err(Error::new(
@@ -31,7 +32,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Named(fields) => {
                     let init = fields.named.iter().map(|f| {
                         let name = f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to decode field `{name}` in `{input_name}`");
+                        let ctx = format!("failed to decode field `{name}` in `{name_string}`");
                         quote! {
                             #name: Decode::decode(_r).context(#ctx)?,
                         }
@@ -46,7 +47,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => {
                     let init = (0..fields.unnamed.len())
                         .map(|i| {
-                            let ctx = format!("failed to decode field `{i}` in `{input_name}`");
+                            let ctx = format!("failed to decode field `{i}` in `{name_string}`");
                             quote! {
                                 Decode::decode(_r).context(#ctx)?,
                             }
@@ -98,7 +99,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                                     let field = f.ident.as_ref().unwrap();
                                     let ctx = format!(
                                         "failed to decode field `{field}` in variant `{name}` in \
-                                         `{input_name}`",
+                                         `{name_string}`",
                                     );
                                     quote! {
                                         #field: Decode::decode(_r).context(#ctx)?,
@@ -115,7 +116,7 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|i| {
                                     let ctx = format!(
                                         "failed to decode field `{i}` in variant `{name}` in \
-                                         `{input_name}`",
+                                         `{name_string}`",
                                     );
                                     quote! {
                                         Decode::decode(_r).context(#ctx)?,
@@ -140,23 +141,43 @@ pub(super) fn derive_decode(item: TokenStream) -> Result<TokenStream> {
             let (impl_generics, ty_generics, where_clause) =
                 decode_split_for_impl(input.generics, lifetime.clone());
 
-            Ok(quote! {
-                #[allow(unused_imports)]
-                impl #impl_generics ::protocol::__private::Decode<#lifetime> for #input_name #ty_generics
-                #where_clause
-                {
-                    fn decode(_r: &mut &#lifetime [u8]) -> ::protocol::__private::Result<Self> {
-                        use ::protocol::__private::{Decode, Context, VarInt, bail};
+            if name_string.ends_with("Byte") {
+                Ok(quote! {
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::protocol::__private::Decode<#lifetime> for #input_name #ty_generics
+                    #where_clause
+                    {
+                        fn decode(_r: &mut &#lifetime [u8]) -> ::protocol::__private::Result<Self> {
+                            use ::protocol::__private::{Decode, Context, VarInt, bail};
 
-                        let ctx = concat!("failed to decode enum discriminant in `", stringify!(#input_name), "`");
-                        let disc = VarInt::decode(_r).context(ctx)?.0;
-                        match disc {
-                            #decode_arms
-                            n => bail!("unexpected enum discriminant {} in `{}`", disc, stringify!(#input_name)),
+                            let ctx = concat!("failed to decode enum discriminant in `", #name_string, "`");
+                            let disc = u8::decode(_r).context(ctx)? as i32;
+                            match disc {
+                                #decode_arms
+                                n => bail!("unexpected enum discriminant {} in `{}`", disc, #name_string),
+                            }
                         }
                     }
-                }
-            })
+                })
+            } else {
+                Ok(quote! {
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::protocol::__private::Decode<#lifetime> for #input_name #ty_generics
+                    #where_clause
+                    {
+                        fn decode(_r: &mut &#lifetime [u8]) -> ::protocol::__private::Result<Self> {
+                            use ::protocol::__private::{Decode, Context, VarInt, bail};
+
+                            let ctx = concat!("failed to decode enum discriminant in `", #name_string, "`");
+                            let disc = VarInt::decode(_r).context(ctx)?.0;
+                            match disc {
+                                #decode_arms
+                                n => bail!("unexpected enum discriminant {} in `{}`", disc, #name_string),
+                            }
+                        }
+                    }
+                })
+            }
         }
         Data::Union(u) => Err(Error::new(
             u.union_token.span(),

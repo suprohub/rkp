@@ -9,6 +9,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let input_name = input.ident;
+    let name_string = input_name.to_string();
 
     add_trait_bounds(&mut input.generics, quote!(::protocol::__private::Encode));
 
@@ -22,7 +23,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                     .iter()
                     .map(|f| {
                         let name = &f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to encode field `{name}` in `{input_name}`");
+                        let ctx = format!("failed to encode field `{name}` in `{name_string}`");
                         quote! {
                             self.#name.encode(&mut _w).context(#ctx)?;
                         }
@@ -31,7 +32,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => (0..fields.unnamed.len())
                     .map(|i| {
                         let lit = LitInt::new(&i.to_string(), Span::call_site());
-                        let ctx = format!("failed to encode field `{lit}` in `{input_name}`");
+                        let ctx = format!("failed to encode field `{lit}` in `{name_string}`");
                         quote! {
                             self.#lit.encode(&mut _w).context(#ctx)?;
                         }
@@ -65,7 +66,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
                     let disc_ctx = format!(
                         "failed to encode enum discriminant {disc} for variant `{variant_name}` \
-                         in `{input_name}`",
+                         in `{name_string}`",
                     );
 
                     match &variant.fields {
@@ -81,7 +82,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|name| {
                                     let ctx = format!(
                                         "failed to encode field `{name}` in variant \
-                                         `{variant_name}` in `{input_name}`",
+                                         `{variant_name}` in `{name_string}`",
                                     );
 
                                     quote! {
@@ -90,12 +91,23 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 })
                                 .collect::<TokenStream>();
 
-                            quote! {
-                                Self::#variant_name { #(#field_names,)* } => {
-                                    VarInt(#disc).encode(&mut _w).context(#disc_ctx)?;
+                            if name_string.ends_with("Byte") {
+                                quote! {
+                                    Self::#variant_name { #(#field_names,)* } => {
+                                        (#disc as u8).encode(&mut _w).context(#disc_ctx)?;
 
-                                    #encode_fields
-                                    Ok(())
+                                        #encode_fields
+                                        Ok(())
+                                    }
+                                }
+                            } else {
+                                quote! {
+                                    Self::#variant_name { #(#field_names,)* } => {
+                                        VarInt(#disc).encode(&mut _w).context(#disc_ctx)?;
+
+                                        #encode_fields
+                                        Ok(())
+                                    }
                                 }
                             }
                         }
@@ -109,7 +121,7 @@ pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|name| {
                                     let ctx = format!(
                                         "failed to encode field `{name}` in variant \
-                                         `{variant_name}` in `{input_name}`"
+                                         `{variant_name}` in `{name_string}`"
                                     );
 
                                     quote! {

@@ -1,15 +1,17 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use rsa::{RsaPrivateKey, rand_core::OsRng, traits::PublicKeyParts};
 use tokio::net::TcpListener;
+use uuid::Uuid;
 
-use crate::{connection::Connection, ping::ServerListPing};
+use crate::{connection::Client, ping::ServerListPing};
 
 pub struct Server {
     pub private_key: RsaPrivateKey,
     pub public_key: Box<[u8]>,
     pub server_list_ping: ServerListPing,
+    pub login_data: HashMap<String, (Uuid, Uuid)>,
 }
 
 impl Server {
@@ -25,6 +27,7 @@ impl Server {
             private_key,
             public_key,
             server_list_ping: ServerListPing::default(),
+            login_data: HashMap::default(),
         })
     }
 
@@ -37,7 +40,7 @@ impl Server {
             let server = self.clone();
 
             tokio::spawn(async move {
-                Connection::new(stream, remote_addr, server)
+                Client::new(stream, remote_addr, server)
                     .unwrap()
                     .handle()
                     .await
